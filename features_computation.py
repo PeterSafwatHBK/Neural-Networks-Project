@@ -87,9 +87,11 @@ def compute_pitch(signal: np.ndarray, sample_rate: int,
         raise ValueError("Method must be either 'yin' or 'pyin'")
     return pitch
 
+import numpy as np
+
 def extract_all_features(signal: np.ndarray, sample_rate: int,
                         frame_length: int = 2048, hop_length: int = 512) -> dict:
-    """Extract all audio features and return as a dictionary."""
+    """Extract all audio features and return as a dictionary with only statistics."""
     features = {}
     
     # Time-domain features
@@ -102,7 +104,7 @@ def extract_all_features(signal: np.ndarray, sample_rate: int,
     features['zcr'] = compute_zcr(signal, frame_length, hop_length)
     
     # Spectral features
-    features['mfcc'] = compute_mfcc(signal, sample_rate, n_fft=frame_length, hop_length=hop_length)
+    # features['mfcc'] = compute_mfcc(signal, sample_rate, n_fft=frame_length, hop_length=hop_length)
     features['chroma_stft'] = compute_chroma_stft(signal, sample_rate, n_fft=frame_length, hop_length=hop_length)
     features['spectral_centroid'] = compute_spectral_centroid(signal, sample_rate, n_fft=frame_length, hop_length=hop_length)
     features['spectral_bandwidth'] = compute_spectral_bandwidth(signal, sample_rate, n_fft=frame_length, hop_length=hop_length)
@@ -112,21 +114,16 @@ def extract_all_features(signal: np.ndarray, sample_rate: int,
     features['pitch'] = compute_pitch(signal, sample_rate, frame_length, hop_length)
     
     # Compute statistics for frame-based features
+    stat_features = {}
     for feature_name in ['rms', 'zcr', 'spectral_centroid', 'spectral_bandwidth', 'spectral_rolloff', 'pitch']:
         if feature_name in features:
             values = features[feature_name]
-            valid_values = values[~np.isnan(values)]
-            if len(valid_values) > 0:
-                features[f'{feature_name}_mean'] = np.mean(valid_values)
-                features[f'{feature_name}_std'] = np.std(valid_values)
-                features[f'{feature_name}_median'] = np.median(valid_values)
-                features[f'{feature_name}_min'] = np.min(valid_values)
-                features[f'{feature_name}_max'] = np.max(valid_values)
+            valid_values = values[~np.isnan(values)]  # Remove NaNs
+            stat_features[f'{feature_name}_mean'] = np.mean(valid_values) if valid_values.size > 0 else np.nan
+            stat_features[f'{feature_name}_std'] = np.std(valid_values) if valid_values.size > 0 else np.nan
+            stat_features[f'{feature_name}_min'] = np.min(valid_values) if valid_values.size > 0 else np.nan
+            stat_features[f'{feature_name}_max'] = np.max(valid_values) if valid_values.size > 0 else np.nan
+
+    final_features = {**{k: v for k, v in features.items() if not isinstance(v, np.ndarray)}, **stat_features}
     
-    # # MFCC statistics
-    # for i in range(features['mfcc'].shape[0]):
-    #     features[f'mfcc_{i+1}_mean'] = np.mean(features['mfcc'][i, :])
-    #     features[f'mfcc_{i+1}_std'] = np.std(features['mfcc'][i, :])
-    
-    
-    return features
+    return final_features

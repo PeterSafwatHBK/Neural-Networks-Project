@@ -6,39 +6,51 @@ import librosa
 from features_computation import *
 
 # Load your original DataFrame
-df = pd.read_csv('D:\\CMP_6\\Neural_Networks\\Project\\merged_audio_features_filtered.csv')
+df = pd.read_csv('D:\\CMP_6\\Neural_Networks\\Project\\filtered_data_labeled.tsv', sep='\t')
+
 if __name__ == "__main__":
+    # Paths to your audio files
     folder = "D:\\CMP_6\\Neural_Networks\\audio_batch_20"
     file_paths = [os.path.join(folder, f) for f in os.listdir(folder) if f.endswith('.mp3')]
 
     i = 0
+    batch_num = 1
     audio_features_list = []
-    merged_df = None   
-    batch_size = 10000
+    batch_size = 10000  # Save every 10 files, you can change it
 
     for path in file_paths:
-        print(path)
+        print(f"Processing: {path}")
         try:
             signal, sample_rate = librosa.load(path, sr=None)
             features = extract_all_features(signal, sample_rate)
             features["path"] = os.path.basename(path)
         except Exception as e:
-            print(e)
+            print(f"Error processing {path}: {e}")
             features = None
 
         if features is not None:
             audio_features_list.append(features)
             i += 1
-            # os.remove(path)
 
-        print(i)
+        print(f"Processed {i} files.")
 
+        # Save every batch_size files
         if i % batch_size == 0 and i != 0:
             audio_df = pd.DataFrame(audio_features_list)
-            if merged_df is None:
-                merged_df = pd.merge(df, audio_df, on='path', how='left')
-            else:
-                merged_df = pd.concat([merged_df, audio_df], ignore_index=True)
+            merged_df = pd.merge(df, audio_df, on='path', how='left')
+            
+            save_path = f'merged_audio_features_batch_{batch_num}.csv'
+            merged_df.to_csv(save_path, index=False)
+            print(f"Saved batch {batch_num} to {save_path}")
+            
+            audio_features_list = []  # Clear for next batch
+            batch_num += 1
 
-            merged_df.to_csv('merged_audio_features_2.csv', index=False)
-            audio_features_list = []
+    # Save any remaining files after loop ends
+    if audio_features_list:
+        audio_df = pd.DataFrame(audio_features_list)
+        merged_df = pd.merge(df, audio_df, on='path', how='left')
+        
+        save_path = f'merged_audio_features_batch_{batch_num}.csv'
+        merged_df.to_csv(save_path, index=False)
+        print(f"Saved final batch {batch_num} to {save_path}")
