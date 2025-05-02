@@ -4,14 +4,17 @@ import numpy as np
 import os
 import librosa
 from features_computation import *
+from signal_denoising import denoise_signal
 
 # Load your original DataFrame
-df = pd.read_csv('D:\\CMP_6\\Neural_Networks\\Project\\filtered_data_labeled.tsv', sep='\t')
+df = pd.read_csv(
+    'your tsv file', sep='\t')
 
 if __name__ == "__main__":
     # Paths to your audio files
-    folder = "D:\\CMP_6\\Neural_Networks\\audio_batch_20"
-    file_paths = [os.path.join(folder, f) for f in os.listdir(folder) if f.endswith('.mp3')]
+    folder = "desired extraction patch"
+    file_paths = [os.path.join(folder, f)
+                  for f in os.listdir(folder) if f.endswith('.mp3')]
 
     i = 0
     batch_num = 1
@@ -22,6 +25,7 @@ if __name__ == "__main__":
         print(f"Processing: {path}")
         try:
             signal, sample_rate = librosa.load(path, sr=None)
+            signal = denoise_signal(signal, sample_rate)
             features = extract_all_features(signal, sample_rate)
             features["path"] = os.path.basename(path)
         except Exception as e:
@@ -38,11 +42,11 @@ if __name__ == "__main__":
         if i % batch_size == 0 and i != 0:
             audio_df = pd.DataFrame(audio_features_list)
             merged_df = pd.merge(df, audio_df, on='path', how='left')
-            
+
             save_path = f'merged_audio_features_batch_{batch_num}.csv'
             merged_df.to_csv(save_path, index=False)
             print(f"Saved batch {batch_num} to {save_path}")
-            
+
             audio_features_list = []  # Clear for next batch
             batch_num += 1
 
@@ -50,7 +54,7 @@ if __name__ == "__main__":
     if audio_features_list:
         audio_df = pd.DataFrame(audio_features_list)
         merged_df = pd.merge(df, audio_df, on='path', how='left')
-        
+
         save_path = f'merged_audio_features_batch_{batch_num}.csv'
         merged_df.to_csv(save_path, index=False)
         print(f"Saved final batch {batch_num} to {save_path}")
