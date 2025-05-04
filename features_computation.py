@@ -38,11 +38,12 @@ def compute_zcr(signal: np.ndarray, frame_length: int = 2048, hop_length: int = 
     return librosa.feature.zero_crossing_rate(y=signal, frame_length=frame_length, hop_length=hop_length)
 
 def compute_mfcc(signal: np.ndarray, sample_rate: int, 
-                 num_mfcc: int = 20, n_fft: int = 2048, 
-                 hop_length: int = 512) -> np.ndarray:
-    """Compute Mel-frequency cepstral coefficients (MFCCs)."""
-    return librosa.feature.mfcc(y=signal, sr=sample_rate, n_mfcc=num_mfcc, 
-                               n_fft=n_fft, hop_length=hop_length)
+                num_mfcc: int = 20, n_fft: int = 2048, 
+                hop_length: int = 512) -> np.ndarray:
+    
+        mfccs = librosa.feature.mfcc(y=signal, sr=sample_rate, n_mfcc=num_mfcc, n_fft=n_fft, hop_length=hop_length)
+        mfccs_mean = np.mean(mfccs, axis=1)
+        return mfccs_mean
 
 def compute_chroma_stft(signal: np.ndarray, sample_rate: int, 
                         n_fft: int = 2048, hop_length: int = 512) -> np.ndarray:
@@ -104,7 +105,10 @@ def extract_all_features(signal: np.ndarray, sample_rate: int,
     features['zcr'] = compute_zcr(signal, frame_length, hop_length)
     
     # Spectral features
-    # features['mfcc'] = compute_mfcc(signal, sample_rate, n_fft=frame_length, hop_length=hop_length)
+    mfccs = compute_mfcc(signal, sample_rate, num_mfcc=13,n_fft=frame_length, hop_length=hop_length)
+    
+    for i in range(1, 14):
+        features[f'mfcc_{i}'] = mfccs[i-1]
     features['chroma_stft'] = compute_chroma_stft(signal, sample_rate, n_fft=frame_length, hop_length=hop_length)
     features['spectral_centroid'] = compute_spectral_centroid(signal, sample_rate, n_fft=frame_length, hop_length=hop_length)
     features['spectral_bandwidth'] = compute_spectral_bandwidth(signal, sample_rate, n_fft=frame_length, hop_length=hop_length)
